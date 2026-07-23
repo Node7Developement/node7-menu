@@ -1,25 +1,48 @@
-local permissionRanks = {
-    ['node7.staff'] = 1,
-    ['node7.moderator'] = 2,
-    ['node7.admin'] = 3,
-    ['node7.owner'] = 4
-}
+local Config = Node7MenuConfig or {}
+local ResourceName = GetCurrentResourceName()
 
-local function identifierSet(source)
-    local result = {}
-
-    for _, identifier in ipairs(GetPlayerIdentifiers(source)) do
-        result[string.lower(identifier)] = true
-    end
-
-    return result
+local function log(message)
+    print(('[%s] %s'):format(ResourceName, message))
 end
 
-local function configuredOwner(source)
-    local identifiers = identifierSet(source)
+local function safeAceAllowed(source, permission)
+    if not permission or permission == '' then
+        return false
+    end
 
-    for _, identifier in ipairs(Node7Menu.OwnerIdentifiers or {}) do
-        if identifiers[string.lower(identifier)] then
+    local ok, allowed = pcall(IsPlayerAceAllowed, source, permission)
+    return ok and allowed == true
+end
+
+local function aceAllowed(source, permission)
+    source = tonumber(source) or 0
+
+    if source == 0 then
+        return true
+    end
+
+    local ace = Config.Ace or {}
+    if ace.Enabled == false then
+        return true
+    end
+
+    if permission == false or permission == nil or permission == '' then
+        return true
+    end
+
+    local checks = { permission }
+
+    if type(ace.Fallback) == 'table' then
+        for _, aceName in ipairs(ace.Fallback) do
+            checks[#checks + 1] = aceName
+        end
+    else
+        checks[#checks + 1] = 'node7.owner'
+        checks[#checks + 1] = 'node7.admin'
+    end
+
+    for _, aceName in ipairs(checks) do
+        if safeAceAllowed(source, aceName) then
             return true
         end
     end
@@ -27,165 +50,64 @@ local function configuredOwner(source)
     return false
 end
 
-local function aceRank(source)
-    if IsPlayerAceAllowed(source, Node7Menu.Permissions.owner) then return 4 end
-    if IsPlayerAceAllowed(source, Node7Menu.Permissions.admin) then return 3 end
-    if IsPlayerAceAllowed(source, Node7Menu.Permissions.moderator) then return 2 end
-    if IsPlayerAceAllowed(source, Node7Menu.Permissions.staff) then return 1 end
-    return 0
+local function deny(source, permission)
+    TriggerClientEvent('chat:addMessage', source, {
+        args = { 'NODE7 MENU', ('Missing ACE permission: %s'):format(permission or 'node7.admin') }
+    })
 end
 
-local function allowed(source, ace)
-    if type(ace) ~= 'string' or ace == '' then
-        return true
+local function registerAceCommand(commandName, permission, handler)
+    if not commandName or commandName == '' then
+        return
     end
 
-    source = tonumber(source)
-    if not source or source <= 0 then
-        return false
-    end
+    RegisterCommand(commandName, function(source, args, raw)
+        if not aceAllowed(source, permission) then
+            deny(source, permission)
+            return
+        end
 
-    -- Primary path: native ACE permission.
-    if IsPlayerAceAllowed(source, ace) then
-        return true
-    end
-
-    -- Owner fallback: only the configured owner identifiers receive owner
-    -- rank, which inherits admin, moderator, and staff menu options.
-    local rank = aceRank(source)
-    if configuredOwner(source) then
-        rank = math.max(rank, 4)
-    end
-
-    local requiredRank = permissionRanks[ace]
-    return requiredRank ~= nil and rank >= requiredRank
+        handler(source, args or {}, raw or '')
+    end, false)
 end
 
-local function permissionSnapshot(source)
-    return {
-        identifiers = GetPlayerIdentifiers(source),
-        configuredOwner = configuredOwner(source),
-        staff = allowed(source, Node7Menu.Permissions.staff),
-        moderator = allowed(source, Node7Menu.Permissions.moderator),
-        admin = allowed(source, Node7Menu.Permissions.admin),
-        owner = allowed(source, Node7Menu.Permissions.owner)
-    }
-end
-
-local function sanitizeAction(action)
-    if type(action) ~= 'table' then return nil end
-
-    local actionType = tostring(action.type or '')
-    local value = action.value
-
-    if actionType == 'serverEvent' then
-        if type(value) ~= 'string' or value == '' then return nil end
-        return { type = actionType, value = value, args = action.args }
-    end
-
-    if actionType == 'clientEvent' then
-        if type(value) ~= 'string' or value == '' then return nil end
-        return { type = actionType, value = value, args = action.args }
-    end
-
-    if actionType == 'command' then
-        if type(value) ~= 'string' or value == '' then return nil end
-        return { type = actionType, value = value }
-    end
-
-    return nil
-end
-
-RegisterNetEvent('node7-menu:server:checkPermission', function(requestId, ace)
-    local src = source
-    TriggerClientEvent(
-        'node7-menu:client:permissionResult',
-        src,
-        requestId,
-        allowed(src, ace)
-    )
+CreateThread(function()
+    Wait(250)
+    log(('started v%s'):format(GetResourceMetadata(ResourceName, 'version', 0) or '1.0.0'))
 end)
 
-RegisterNetEvent('node7-menu:server:execute', function(action, requiredAce)
-    local src = source
-
-    if not allowed(src, requiredAce) then
-        TriggerClientEvent(
-            'node7-menu:client:notify',
-            src,
-            'You do not have permission to use this option.',
-            'error'
-        )
+registerAceCommand(Config.Commands and Config.Commands.Test, Config.Ace and Config.Ace.Test, function(source)
+    if source == 0 then
+        log('Console cannot open a client menu.')
         return
     end
 
-    local safeAction = sanitizeAction(action)
-    if not safeAction then return end
-
-    if safeAction.type == 'serverEvent' then
-        TriggerEvent(safeAction.value, src, safeAction.args)
-        return
-    end
-
-    if safeAction.type == 'clientEvent' then
-        TriggerClientEvent(safeAction.value, src, safeAction.args)
-        return
-    end
-
-    if safeAction.type == 'command' then
-        ExecuteCommand(safeAction.value:gsub('^/', ''))
-    end
+    TriggerClientEvent('node7-menu:client:openTest', source)
 end)
 
-RegisterCommand('n7menuperms', function(source)
+registerAceCommand(Config.Commands and Config.Commands.Debug, Config.Ace and Config.Ace.Debug, function(source)
     if source == 0 then
-        print('[node7-menu] This test command must be run by a player.')
+        log('Debug command can only inspect a client instance.')
         return
     end
 
-    local snapshot = permissionSnapshot(source)
+    TriggerClientEvent('node7-menu:client:debug', source)
+end)
 
-    print(('[node7-menu] ACE diagnostic for %s (%s)'):format(
-        GetPlayerName(source) or 'unknown',
-        tostring(source)
-    ))
-
-    for _, identifier in ipairs(snapshot.identifiers) do
-        print(('  identifier: %s'):format(identifier))
-    end
-
-    print(('  node7.staff: %s'):format(tostring(snapshot.staff)))
-    print(('  node7.moderator: %s'):format(tostring(snapshot.moderator)))
-    print(('  node7.admin: %s'):format(tostring(snapshot.admin)))
-    print(('  node7.owner: %s'):format(tostring(snapshot.owner)))
-
-    TriggerClientEvent('node7-menu:client:showPermissions', source, snapshot)
-end, false)
-
-RegisterCommand('n7acecheck', function(source)
+registerAceCommand(Config.Commands and Config.Commands.Reload, Config.Ace and Config.Ace.Reload, function(source)
     if source == 0 then
-        print('[node7-menu] This test command must be run by a player.')
+        log('Reload command can only refresh a client instance.')
         return
     end
 
-    TriggerClientEvent(
-        'node7-menu:client:showPermissions',
-        source,
-        permissionSnapshot(source)
-    )
-end, false)
+    TriggerClientEvent('node7-menu:client:reloadUi', source)
+end)
 
-RegisterNetEvent('node7-menu:test:serverAction', function(source, args)
-    local src = tonumber(source) or source
-    print(('[node7-menu] server action test from %s: %s'):format(
-        tostring(src),
-        json.encode(args or {})
-    ))
+registerAceCommand(Config.Commands and Config.Commands.CloseAll, Config.Ace and Config.Ace.CloseAll, function(source)
+    if source == 0 then
+        log('Close command can only close a client menu instance.')
+        return
+    end
 
-    TriggerClientEvent(
-        'node7-menu:client:notify',
-        src,
-        'Server action executed successfully.',
-        'success'
-    )
+    TriggerClientEvent('node7-menu:client:closeAll', source)
 end)

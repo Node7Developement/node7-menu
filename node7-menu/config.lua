@@ -1,31 +1,34 @@
-Node7Menu = {}
+Node7MenuConfig = Node7MenuConfig or {}
 
-Node7Menu.Debug = false
-Node7Menu.Command = 'n7menu'
-Node7Menu.TestCommand = 'n7menutest'
-Node7Menu.AdminTestCommand = 'n7adminmenu'
-Node7Menu.DefaultKey = 'F6'
-Node7Menu.EnableKeyMapping = true
-Node7Menu.CloseOnSelect = true
-Node7Menu.AllowEscapeClose = true
+Node7MenuConfig.Debug = false
+Node7MenuConfig.InventoryImageResource = 'node7-inventory'
 
-Node7Menu.Theme = {
-    title = 'NODE7 LABS',
-    subtitle = 'FRONTIER MENU',
-    accent = '#c6a15b'
+Node7MenuConfig.Sounds = {
+    Enabled = true,
+    Open = { name = 'MENU_ENTER', set = 'HUD_PLAYER_MENU' },
+    Close = { name = 'MENU_CLOSE', set = 'HUD_PLAYER_MENU' },
+    Select = { name = 'SELECT', set = 'RDRO_Character_Creator_Sounds' },
+    Navigate = { name = 'NAV_LEFT', set = 'PAUSE_MENU_SOUNDSET' },
+    Error = { name = 'ERROR', set = 'HUD_PLAYER_MENU' }
 }
 
-Node7Menu.Permissions = {
-    staff = 'node7.staff',
-    moderator = 'node7.moderator',
-    admin = 'node7.admin',
-    owner = 'node7.owner'
+Node7MenuConfig.Commands = {
+    Test = 'node7menutest',
+    Debug = 'node7menudebug',
+    Reload = 'node7menureload',
+    CloseAll = 'node7menuclose'
 }
 
-
--- Used only as an owner fallback when the server has not attached the ACE
--- principal to the player yet. ACE remains the primary permission system.
-Node7Menu.OwnerIdentifiers = {
-    'fivem:19380766',
-    'discord:1019014170458456074'
+Node7MenuConfig.Ace = {
+    -- Keep this simple: /node7menutest is open for testing.
+    -- Admin/dev commands use your existing NODE7 hierarchy only.
+    Enabled = true,
+    Test = false,
+    Debug = 'node7.admin',
+    Reload = 'node7.admin',
+    CloseAll = 'node7.admin',
+    Fallback = {
+        'node7.owner',
+        'node7.admin'
+    }
 }

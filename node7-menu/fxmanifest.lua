@@ -1,22 +1,34 @@
 fx_version 'cerulean'
 game 'rdr3'
-
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 
-author 'NODE7 LABS'
-description 'NODE7 nested Red Dead style menu system'
-version '1.0.2'
+lua54 'yes'
 
-ui_page 'html/index.html'
+author 'NODE7 DEVELOPMENT STUDIOS'
+description 'NODE7 premium RedM menu API for NODE7 resources'
+version '1.0.6'
 
-shared_script 'config.lua'
-client_script 'client/main.lua'
-server_script 'server/main.lua'
-
-files {
-    'html/index.html',
-    'html/style.css',
-    'html/app.js'
+shared_scripts {
+    'config.lua'
 }
 
-lua54 'yes'
+client_scripts {
+    'client/main.lua'
+}
+
+server_scripts {
+    'server/main.lua'
+}
+
+ui_page 'html/ui.html'
+
+files {
+    'html/ui.html',
+    'html/css/app.css',
+    'html/css/*.png',
+    'html/js/mustache.min.js',
+    'html/js/app.js',
+    'html/fonts/*.ttf'
+}
+
+dependency 'node7-core'
