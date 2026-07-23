@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>NODE7 Menu</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app" class="hidden">
+    <section class="menu-shell">
+        <header class="menu-header">
+            <div class="brand">
+                <span class="ornament">◆</span>
+                <div>
+                    <small id="subtitle">FRONTIER MENU</small>
+                    <h1 id="title">NODE7 LABS</h1>
+                </div>
+            </div>
+            <span id="counter">0 / 0</span>
+        </header>
+
+        <p id="description" class="menu-description"></p>
+
+        <div id="items" class="menu-items"></div>
+
+        <footer class="menu-footer">
+            <span><kbd>↑ ↓</kbd> Navigate</span>
+            <span><kbd>ENTER</kbd> Select</span>
+            <span><kbd>BACKSPACE</kbd> Back</span>
+            <span><kbd>ESC</kbd> Close</span>
+        </footer>
+    </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
